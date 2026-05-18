@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart'
     as timeago;
+import 'dart:convert';
 
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
 import '../../services/user_service.dart';
 import '../auth/login_page.dart';
 import 'private_chat_page.dart';
+import '../profile/profile_page.dart';
 
 class UserListPage
     extends StatefulWidget {
@@ -95,28 +97,19 @@ class _UserListPageState
 
         actions: [
           IconButton(
-            onPressed:
-                () async {
-              await AuthService()
-                  .logout();
+            onPressed: () {
 
-              if (context
-                  .mounted) {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (_) =>
-                            const LoginPage(),
-                  ),
-                  (route) =>
-                      false,
-                );
-              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const ProfilePage(),
+                ),
+              );
             },
-            icon:
-                const Icon(
-              Icons.logout,
+
+            icon: const Icon(
+              Icons.person,
             ),
           ),
         ],
@@ -507,31 +500,27 @@ class _UserListPageState
                               children: [
 
                                 CircleAvatar(
-                                  radius:
-                                      30,
+                                  radius: 28,
 
-                                  backgroundColor:
-                                      Colors
-                                          .deepPurple
-                                          .shade100,
+                                  backgroundImage:
+                                      user['photoUrl'] !=
+                                              null
+                                          ? MemoryImage(
+                                              base64Decode(
+                                                user[
+                                                    'photoUrl'],
+                                              ),
+                                            )
+                                          : null,
 
                                   child:
-                                      Text(
-                                    user['name'][0]
-                                        .toUpperCase(),
-
-                                    style:
-                                        const TextStyle(
-                                      fontSize:
-                                          22,
-
-                                      fontWeight:
-                                          FontWeight.bold,
-
-                                      color:
-                                          Colors.deepPurple,
-                                    ),
-                                  ),
+                                      user['photoUrl'] ==
+                                              null
+                                          ? Text(
+                                              user['name'][0]
+                                                  .toUpperCase(),
+                                            )
+                                          : null,
                                 ),
 
                                 Positioned(

@@ -125,8 +125,7 @@ class AuthService {
   }
 
   // ================= ONLINE STATUS =================
-  Future<void>
-  updateOnlineStatus(
+  Future<void> updateOnlineStatus(
     bool isOnline,
   ) async {
 

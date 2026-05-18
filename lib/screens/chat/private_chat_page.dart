@@ -8,8 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../services/chat_service.dart';
 import '../../widgets/chat_bubble.dart';
 
-class PrivateChatPage
-    extends StatefulWidget {
+class PrivateChatPage extends StatefulWidget {
   final String receiverId;
   final String receiverName;
 
@@ -20,14 +19,12 @@ class PrivateChatPage
   });
 
   @override
-  State<PrivateChatPage>
-      createState() =>
-          _PrivateChatPageState();
+  State<PrivateChatPage> createState() =>
+      _PrivateChatPageState();
 }
 
 class _PrivateChatPageState
-    extends State<
-        PrivateChatPage> {
+    extends State<PrivateChatPage> {
   final TextEditingController
       messageController =
       TextEditingController();
@@ -40,10 +37,10 @@ class _PrivateChatPageState
       chatService =
       ChatService();
 
+  User? currentUser;
+
   bool isMarkingRead =
       false;
-
-  User? currentUser;
 
   @override
   void initState() {
@@ -55,10 +52,19 @@ class _PrivateChatPageState
             .currentUser;
 
     setActiveChatRoom();
-    markAsRead();
+
+    WidgetsBinding.instance
+        .addPostFrameCallback(
+      (_) {
+        markAsRead();
+      },
+    );
   }
 
-  // SET ACTIVE ROOM
+  // ========================
+  // ACTIVE CHAT ROOM
+  // ========================
+
   Future<void>
   setActiveChatRoom()
   async {
@@ -84,7 +90,6 @@ class _PrivateChatPageState
     });
   }
 
-  // CLEAR ACTIVE ROOM
   Future<void>
   clearActiveChatRoom()
   async {
@@ -103,7 +108,10 @@ class _PrivateChatPageState
     });
   }
 
+  // ========================
   // MARK READ
+  // ========================
+
   Future<void> markAsRead()
   async {
     if (currentUser ==
@@ -152,6 +160,7 @@ class _PrivateChatPageState
         });
       }
 
+      // reset unread
       await FirebaseFirestore
           .instance
           .collection(
@@ -176,7 +185,10 @@ class _PrivateChatPageState
     }
   }
 
+  // ========================
   // AUTO SCROLL
+  // ========================
+
   void scrollDown() {
     WidgetsBinding.instance
         .addPostFrameCallback(
@@ -201,7 +213,10 @@ class _PrivateChatPageState
     );
   }
 
-  // SEND MESSAGE
+  // ========================
+  // SEND TEXT
+  // ========================
+
   Future<void>
   sendMessage() async {
     if (messageController
@@ -224,34 +239,49 @@ class _PrivateChatPageState
         .clear();
   }
 
-  // PICK IMAGE
+  // ========================
+  // SEND IMAGE
+  // ========================
+
   Future<void>
   pickImage() async {
-    final picker =
-        ImagePicker();
+    try {
+      final picker =
+          ImagePicker();
 
-    final pickedFile =
-        await picker
-            .pickImage(
-      source:
-          ImageSource
-              .gallery,
-    );
+      final pickedFile =
+          await picker
+              .pickImage(
+        source:
+            ImageSource
+                .gallery,
+        imageQuality:
+            70,
+      );
 
-    if (pickedFile ==
-        null) return;
+      if (pickedFile ==
+          null) {
+        return;
+      }
 
-    File image =
-        File(
-      pickedFile.path,
-    );
+      File image =
+          File(
+        pickedFile.path,
+      );
 
-    await chatService
-        .sendImageMessage(
-      receiverId:
-          widget.receiverId,
-      imageFile: image,
-    );
+      await chatService
+          .sendImageMessage(
+        receiverId:
+            widget
+                .receiverId,
+        imageFile:
+            image,
+      );
+    } catch (e) {
+      debugPrint(
+        "pick image error: $e",
+      );
+    }
   }
 
   @override
@@ -286,84 +316,134 @@ class _PrivateChatPageState
           const Color(
               0xffF5F7FA),
 
+      // ====================
+      // APPBAR
+      // ====================
+
       appBar: AppBar(
-        elevation: 0,
+        elevation: 1,
         backgroundColor:
             Colors.white,
         foregroundColor:
             Colors.black,
 
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor:
-                  Colors
-                      .deepPurple
-                      .shade100,
-              child: Text(
-                widget
-                    .receiverName[
-                        0]
-                    .toUpperCase(),
-                style:
-                    const TextStyle(
-                  color: Colors
-                      .deepPurple,
-                  fontWeight:
-                      FontWeight
-                          .bold,
+        title: StreamBuilder<DocumentSnapshot>(
+          stream: FirebaseFirestore
+              .instance
+              .collection('users')
+              .doc(widget.receiverId)
+              .snapshots(),
+
+          builder: (context, snapshot) {
+
+            String? photoUrl;
+
+            bool isOnline = false;
+
+            if (snapshot.hasData &&
+                snapshot.data!.exists) {
+
+              final userData =
+                  snapshot.data!.data()
+                      as Map<String, dynamic>;
+
+              photoUrl =
+                  userData['photoUrl'];
+
+              isOnline =
+                  userData['isOnline'] ??
+                      false;
+            }
+
+            return Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+
+                  backgroundImage:
+                      photoUrl != null
+                          ? NetworkImage(
+                              photoUrl,
+                            )
+                          : null,
+
+                  backgroundColor:
+                      Colors.deepPurple
+                          .shade100,
+
+                  child: photoUrl ==
+                          null
+                      ? Text(
+                          widget
+                              .receiverName[0]
+                              .toUpperCase(),
+                          style:
+                              const TextStyle(
+                            color: Colors
+                                .deepPurple,
+                            fontWeight:
+                                FontWeight
+                                    .bold,
+                          ),
+                        )
+                      : null,
                 ),
-              ),
-            ),
 
-            const SizedBox(
-              width: 12,
-            ),
+                const SizedBox(
+                  width: 12,
+                ),
 
-            Expanded(
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment
-                        .start,
-                children: [
-                  Text(
-                    widget
-                        .receiverName,
-                    overflow:
-                        TextOverflow
-                            .ellipsis,
-                    style:
-                        const TextStyle(
-                      fontSize:
-                          17,
-                      fontWeight:
-                          FontWeight
-                              .bold,
-                    ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment
+                            .start,
+                    children: [
+
+                      Text(
+                        widget
+                            .receiverName,
+                        overflow:
+                            TextOverflow
+                                .ellipsis,
+
+                        style:
+                            const TextStyle(
+                          fontSize: 17,
+                          fontWeight:
+                              FontWeight
+                                  .bold,
+                        ),
+                      ),
+
+                      Text(
+                        isOnline
+                            ? "Online"
+                            : "Offline",
+
+                        style:
+                            TextStyle(
+                          fontSize: 12,
+                          color: isOnline
+                              ? Colors.green
+                              : Colors.grey,
+                        ),
+                      ),
+                    ],
                   ),
-
-                  const Text(
-                    "Chatting...",
-                    style:
-                        TextStyle(
-                      fontSize:
-                          12,
-                      color: Colors
-                          .grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
 
+      // ====================
+      // BODY
+      // ====================
+
       body: Column(
         children: [
-
-          // MESSAGE LIST
           Expanded(
             child:
                 StreamBuilder<
@@ -390,35 +470,22 @@ class _PrivateChatPageState
                   );
                 }
 
-                if (!snapshot
-                    .hasData) {
-                  return const Center(
-                    child: Text(
-                      "No messages",
-                    ),
-                  );
-                }
-
                 final docs =
                     snapshot
-                        .data!
-                        .docs;
+                            .data
+                            ?.docs ??
+                        [];
 
                 markAsRead();
+
                 scrollDown();
 
                 return ListView.builder(
                   controller:
                       scrollController,
-
                   padding:
                       const EdgeInsets
-                          .symmetric(
-                    horizontal:
-                        10,
-                    vertical:
-                        12,
-                  ),
+                          .all(10),
 
                   itemCount:
                       docs.length,
@@ -441,30 +508,35 @@ class _PrivateChatPageState
 
                     return ChatBubble(
                       isMe: isMe,
+
                       isSeen:
-                          data[
-                                  'isSeen'] ??
+                          data['isSeen'] ??
                               false,
+
                       senderName:
-                          data[
-                                  'senderName'] ??
+                          data['senderName'] ??
                               'User',
+
                       message:
-                          data[
-                                  'message'] ??
+                          data['message'] ??
                               '',
+
                       imageUrl:
-                          data[
-                              'imageUrl'],
+                          data['imageUrl'],
+
                       type:
-                          data[
-                              'type'] ??
+                          data['type'] ??
                               'text',
+
                       timestamp:
-                          data[
-                                  'timestamp'] ??
-                              Timestamp
-                                  .now(),
+                          data['timestamp'] ??
+                              Timestamp.now(),
+
+                      onDelete: () async {
+                        await docs[index]
+                            .reference
+                            .delete();
+                      },
                     );
                   },
                 );
@@ -472,18 +544,16 @@ class _PrivateChatPageState
             ),
           ),
 
-          // INPUT
+          // ====================
+          // INPUT AREA
+          // ====================
+
           SafeArea(
             child:
                 Container(
               padding:
                   const EdgeInsets
-                      .fromLTRB(
-                12,
-                10,
-                12,
-                10,
-              ),
+                      .all(12),
 
               decoration:
                   BoxDecoration(
@@ -492,31 +562,21 @@ class _PrivateChatPageState
                 boxShadow: [
                   BoxShadow(
                     color: Colors
-                        .black
-                        .withOpacity(
-                            0.05),
+                        .black12,
                     blurRadius:
                         10,
-                    offset:
-                        const Offset(
-                            0, -2),
                   ),
                 ],
               ),
 
               child: Row(
                 children: [
-
                   // IMAGE BUTTON
-                  Container(
-                    decoration:
-                        BoxDecoration(
-                      color: Colors
-                          .deepPurple
-                          .shade50,
-                      shape: BoxShape
-                          .circle,
-                    ),
+                  CircleAvatar(
+                    backgroundColor:
+                        Colors
+                            .deepPurple
+                            .shade50,
 
                     child:
                         IconButton(
@@ -537,43 +597,46 @@ class _PrivateChatPageState
 
                   Expanded(
                     child:
-                        Container(
+                        TextField(
+                      controller:
+                          messageController,
+
+                      textInputAction:
+                          TextInputAction
+                              .send,
+
+                      onSubmitted:
+                          (_) =>
+                              sendMessage(),
+
                       decoration:
-                          BoxDecoration(
-                        color: Colors
-                            .grey
-                            .shade100,
-                        borderRadius:
-                            BorderRadius.circular(
-                                30),
-                      ),
+                          InputDecoration(
+                        hintText:
+                            "Type message...",
 
-                      child:
-                          TextField(
-                        controller:
-                            messageController,
+                        filled:
+                            true,
 
-                        textInputAction:
-                            TextInputAction
-                                .send,
+                        fillColor:
+                            Colors.grey
+                                .shade100,
 
-                        onSubmitted:
-                            (_) =>
-                                sendMessage(),
+                        border:
+                            OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(
+                                  30),
 
-                        decoration:
-                            const InputDecoration(
-                          hintText:
-                              "Type message...",
-                          border:
-                              InputBorder.none,
-                          contentPadding:
-                              EdgeInsets.symmetric(
-                            horizontal:
-                                20,
-                            vertical:
-                                14,
-                          ),
+                          borderSide:
+                              BorderSide.none,
+                        ),
+
+                        contentPadding:
+                            const EdgeInsets.symmetric(
+                          horizontal:
+                              20,
+                          vertical:
+                              14,
                         ),
                       ),
                     ),
@@ -604,7 +667,7 @@ class _PrivateChatPageState
                 ],
               ),
             ),
-          ),
+          )
         ],
       ),
     );

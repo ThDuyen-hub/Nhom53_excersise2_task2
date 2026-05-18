@@ -76,6 +76,7 @@ class ChatService {
           Timestamp.now(),
 
         'isSeen': false,
+        'deleted': false,
     });
 
     // get old unread
@@ -249,8 +250,8 @@ class ChatService {
         'timestamp':
             Timestamp.now(),
 
-        'isSeen':
-            false,
+        'isSeen': false,
+        'deleted': false,
         });
 
         // unread logic
@@ -343,7 +344,54 @@ class ChatService {
         'send image error: $e',
         );
     }
+  }
+
+  Future<void> deleteMessage({
+    required String receiverId,
+    required String messageId,
+  }) async {
+
+    final currentUser =
+        _auth.currentUser;
+
+    if (currentUser == null) {
+      return;
     }
+
+    String roomId =
+        getChatRoomId(
+      currentUser.uid,
+      receiverId,
+    );
+
+    try {
+
+      await _firestore
+          .collection(
+              'chat_rooms')
+          .doc(roomId)
+          .collection(
+              'messages')
+          .doc(messageId)
+          .update({
+
+        'deleted': true,
+
+        'message':
+            'This message was deleted',
+
+        'imageUrl': null,
+
+        'type': 'deleted',
+      });
+
+    } catch (e) {
+
+      print(
+        'send image error: $e',
+      );
+    }
+  }
 
   // realtime messages
   Stream<QuerySnapshot>
@@ -370,6 +418,7 @@ class ChatService {
         )
         .snapshots();
   }
+
 
   Stream<QuerySnapshot>
       getChatRooms(
